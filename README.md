@@ -71,7 +71,7 @@ The `Vetta` class implements the **Vessel Tree Autoencoder** described in the p
 If you find **VeTTA** useful, please cite:
 
 ```bibtex
-@inproceedings{batten2025_vetta,
+@inproceedings{batten2025_vector,
   author    = {James Batten and Michiel Schaap and Matthew Sinclair
                and Ying Bai and Ben Glocker},
   title     = {{Vector Representations of Vessel Trees}},
