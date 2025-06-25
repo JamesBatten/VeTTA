@@ -1,43 +1,89 @@
-# VETTA: Vessel Tree Transformer Autoencoder
+# VeTTA: Vessel Tree Transformer Autoencoder
 
-This is the code repo for the paper Vector Representations of Vessel Trees https://arxiv.org/abs/2506.11163
+[![Paper](https://img.shields.io/badge/paper-arXiv:2506.11163-b31b1b.svg)](https://arxiv.org/abs/2506.11163)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-VETTA is a deep learning model designed to learn meaningful latent representations of vessel tree structures. It operates as an autoencoder, capable of both encoding complete vessel graphs into a compact latent vector and recursively decoding the original tree.
+> **VeTTA** (Vector **T**ree **A**utoencoder) is a two‑stage Transformer framework for learning compact, expressive representations of **3‑D vascular trees** such as coronary arteries. It encodes the *continuous* geometry of each vessel **segment** and the *discrete* **topology** of the full tree into a single latent vector, and it can recursively decode that vector back into a valid tree.
 
-The architecture is built with PyTorch and leverages Transformer-based components to effectively model the complex relationships within vascular graphs.
+The code in this repository is the **official PyTorch implementation** accompanying our paper presented at **MIDL 2025**:
 
-## Model Architecture
+> **Vector Representations of Vessel Trees**
+> James Batten, Michiel Schaap, Matthew Sinclair, Ying Bai, Ben Glocker
+> Medical Imaging with Deep Learning (MIDL), 2025 — **Oral**
 
-The model is composed of two primary components: an **Encoder** and a **Decoder**.
+---
 
-### 1. Encoder
+## Repository Structure
 
-The Encoder's role is to process a complete vessel tree graph and compress it into a fixed-size latent vector, `z`.
+All core code lives in the **`vetta/`** package. The high‑level organisation is shown below.
 
--   **Input**: A full vessel graph, represented by its node properties (e.g., 3D position, radius, depth) and edge connectivity.
--   **Core Component**: It uses a `VesselEdgesEncoder`, which transforms the graph into a sequence of feature vectors, where each vector represents an **edge**.
--   **Feature Engineering**:
-    -   Node coordinate data is lifted into a higher-dimensional space using sinusoidal positional encoding (`add_octaves`), which helps the model interpret spatial information more effectively.
-    -   Features from connected nodes are concatenated to form the initial edge representation.
--   **Processing**: This sequence of edge features is processed by a **`TransformerEncoder`**. This allows the model to capture the global context and relationships between all edges in the graph.
--   **Output**: The Transformer's output is pooled into a single vector, which is then mapped to the latent representation `z`. The model can be configured to operate as a standard autoencoder or as a **Variational Autoencoder (VAE)**, in which case it outputs a mean (`z_mu`) and log-variance (`z_logvar`) for the latent distribution.
+```text
+vetta/
+├── model/
+│   ├── vetta.py                # Vessel Tree Autoencoder
+│   ├── vessel_edges_encoder.py # Transformer encoder for edges
+│   ├── mlp2.py                 # Simple 2‑layer MLP
+│   ├── norm.py                 # Normalisation factory
+│   ├── nonlinearity.py         # Activation factory
+│   └── weight_init.py          # Weight‑initialisation helpers
+├── common/
+│   └── utils.py                # Fourier features, I/O helpers, …
+└── …
+```
 
-### 2. Decoder
+### Main Model — `Vetta`
 
-The Decoder is a conditional generator. It takes the latent vector `z` and a partial vessel tree as input to predict the missing components.
+**File:** `vetta/model/vetta.py`
 
--   **Input**:
-    1.  The latent vector `z` from the encoder (representing the "style" of the full tree).
-    2.  A partial, or "left-hand-side" (LHS), vessel graph.
--   **Processing**:
-    1.  The partial graph is first processed by its own `VesselEdgesEncoder` (without final pooling) to get a sequence of contextualized edge features.
-    2.  This partial encoding is concatenated with the global latent vector `z` and passed through an MLP to create a `memory` tensor. This memory combines the global style with the local context.
-    3.  A **`TransformerDecoder`** is then used to generate the output. It uses a set of learnable **query `slots`** that attend to the `memory` tensor.
--   **Output**: The output from the `TransformerDecoder` slots is passed through several MLP heads to predict the properties of the missing parts of the tree, such as node positions, topology, and radius.
+The `Vetta` class implements the **Vessel Tree Autoencoder** described in the paper (Fig. 1, §3).
 
-## Project Structure
+* **Encoder branch** — encodes the whole tree into a latent vector *z* using a `VesselEdgesEncoder`.
+  *Optionally* runs in **VAE** mode to produce $\mu\_z,\;\log\sigma^2\_z$.
+* **Decoder branch** — **recursively** reconstructs a tree conditioned on *partial* reconstructions:
 
--   `vetta/model/vetta.py`: Contains the main `Vetta` module, integrating the encoder and decoder.
--   `vetta/model/vessel_edges_encoder.py`: Defines the core encoder that processes graph edges using a Transformer.
--   `vetta/common/utils.py`: Provides utility functions, most notably `add_octaves` for sinusoidal positional encoding.
--   `vetta/model/{mlp2, norm, nonlinearity, weight_init}.py`: Helper modules for building robust and configurable PyTorch network layers.
+  1. Encode the partial tree with **another** `VesselEdgesEncoder`.
+  2. Concatenate global latent $z$ to each partial‑edge feature → **memory** for a Transformer **decoder**.
+  3. Attend with a small set of learnable **slot queries** → slot embeddings.
+  4. Feed each slot through lightweight **MLP heads** to predict child *position*, *radius*, *topology*, … then cluster.
+
+### Core Encoder — `VesselEdgesEncoder`
+
+**File:** `vetta/model/vessel_edges_encoder.py`
+
+* Assemble edge features from the two incident nodes (position, radius, topology).
+* Lift 3‑D coordinates with **high‑frequency Fourier features** (cf. §3.1).
+* Process the sequence with a `nn.TransformerEncoder`.
+* Includes a learnable **start token** so the model gracefully handles empty / initial trees.
+
+### Utilities & Building Blocks
+
+| File                                                 | Purpose                                                                |
+| ---------------------------------------------------- | ---------------------------------------------------------------------- |
+| `vetta/common/utils.py`                              | Fourier feature lifting (`add_octaves`, `lift`), tensor/array helpers. |
+| `vetta/model/mlp2.py`                                | Reusable 2‑layer MLP (`MLP2`).                                         |
+| `vetta/model/norm.py`, `vetta/model/nonlinearity.py` | Factory fns for norms & activations (e.g. GroupNorm, GELU).            |
+| `vetta/model/weight_init.py`                         | Consistent weight initialisation (e.g. Xavier) across modules.         |
+
+---
+
+## Citation
+
+If you find **VeTTA** useful, please cite:
+
+```bibtex
+@inproceedings{batten2025_vetta,
+  author    = {James Batten and Michiel Schaap and Matthew Sinclair
+               and Ying Bai and Ben Glocker},
+  title     = {{Vector Representations of Vessel Trees}},
+  booktitle = {Proceedings of the 8th Medical Imaging with Deep Learning (MIDL)},
+  year      = {2025},
+  note      = {Oral presentation},
+  url       = {https://openreview.net/forum?id=ESzOwfBhRv}
+}
+```
+
+---
+
+## License
+
+This project is distributed under the terms of the **MIT License**. See the [LICENSE](LICENSE) file for details.
