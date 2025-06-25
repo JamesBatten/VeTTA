@@ -1,8 +1,6 @@
-Of course. Here is a README file for your project, describing the model architecture and its purpose based on the provided code.
-
----
-
 # VETTA: Vessel Tree Transformer Autoencoder
+
+This is the code repo for the paper Vector Representations of Vessel Trees https://arxiv.org/abs/2506.11163
 
 VETTA is a deep learning model designed to learn meaningful latent representations of vessel tree structures. It operates as an autoencoder, capable of both encoding complete vessel graphs into a compact latent vector and recursively decoding the original tree.
 
