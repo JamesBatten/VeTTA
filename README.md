@@ -11,6 +11,12 @@ The code in this repository is the **official PyTorch implementation** accompany
 > James Batten, Michiel Schaap, Matthew Sinclair, Ying Bai, Ben Glocker
 > Medical Imaging with Deep Learning (MIDL), 2025 — **Oral**
 
+<p align="center">
+  <img src="assets/main_figure_009.svg" alt="VeTTA model overview">
+</p>
+
+Project page: https://jamesbatten.xyz/#project-vector-representations-of-vessel-trees
+
 ## 2D Latent Space Interpolations
 
 <table>
